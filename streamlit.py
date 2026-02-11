@@ -28,8 +28,8 @@ with st.sidebar:
         index=3,
     )
     st.subheader("Text Extraction")
-    include_underlined = st.checkbox("Include underlined text", value=True)
-    include_highlighted = st.checkbox("Include highlighted text", value=False)
+    include_underlined = st.checkbox("Include underlined text", value=False)
+    include_highlighted = st.checkbox("Include highlighted text", value=True)
 
 
 title_level = heading_options[title_heading]
