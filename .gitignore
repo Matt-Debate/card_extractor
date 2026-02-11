@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.venv/
+venv/
+env/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
+
+# Logs/temp
+*.log
+*.tmp
+
+# Large/intermediate outputs if you want to exclude
+# *.docx
+# *.png

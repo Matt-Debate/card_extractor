@@ -1,0 +1,5 @@
+# Project dependencies
+python-docx
+requests
+
+# Add more packages as needed, one per line.
