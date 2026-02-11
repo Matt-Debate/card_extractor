@@ -1,5 +1,5 @@
 # Project dependencies
 python-docx
 requests
-
+streamlit
 # Add more packages as needed, one per line.
