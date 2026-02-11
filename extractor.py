@@ -1,5 +1,6 @@
 import io
 import csv
+from docx.enum.text import WD_COLOR_INDEX
 
 
 def is_heading(para, level):
@@ -7,7 +8,7 @@ def is_heading(para, level):
     return f"heading {level}" in name or name == f"heading{level}"
 
 
-def extract_cards(doc, title_level, tag_level):
+def extract_cards(doc, title_level, tag_level, include_underlined=True, include_highlighted=False):
     cards = []
 
     current_title = ""
@@ -16,7 +17,7 @@ def extract_cards(doc, title_level, tag_level):
     current_underlined_runs = []
 
     in_card = False
-    collect_quote_underlines = False
+    collect_quote_marked = False
 
     def flush_card():
         if current_tag.strip() and current_citation.strip():
@@ -53,7 +54,7 @@ def extract_cards(doc, title_level, tag_level):
                 current_citation = ""
                 current_underlined_runs = []
                 in_card = True
-                collect_quote_underlines = False
+                collect_quote_marked = False
 
                 j = i + 1
                 while j < n:
@@ -65,21 +66,30 @@ def extract_cards(doc, title_level, tag_level):
                     if is_heading(nxt, title_level) or is_heading(nxt, tag_level):
                         break
                     current_citation = nxt_text
-                    collect_quote_underlines = True
+                    collect_quote_marked = True
                     i = j
                     break
 
                 i += 1
                 continue
 
-            if in_card and collect_quote_underlines:
+            if in_card and collect_quote_marked:
                 if is_heading(para, title_level) or is_heading(para, tag_level):
-                    collect_quote_underlines = False
+                    collect_quote_marked = False
                     i += 1
                     continue
 
                 for run in para.runs:
-                    if run.font.underline and run.text and run.text.strip():
+                    if not run.text or not run.text.strip():
+                        continue
+
+                    is_underlined = bool(run.font.underline) if include_underlined else False
+                    is_highlighted = False
+                    if include_highlighted:
+                        highlight = run.font.highlight_color
+                        is_highlighted = bool(highlight) and highlight != WD_COLOR_INDEX.AUTO
+
+                    if is_underlined or is_highlighted:
                         current_underlined_runs.append(run.text)
 
             i += 1

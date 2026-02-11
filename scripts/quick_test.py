@@ -12,7 +12,13 @@ SAMPLE_PATH = ROOT / "samples" / "sample.docx"
 
 def main():
     doc = Document(str(SAMPLE_PATH))
-    cards = extract_cards(doc, title_level=1, tag_level=4)
+    cards = extract_cards(
+        doc,
+        title_level=1,
+        tag_level=4,
+        include_underlined=True,
+        include_highlighted=True,
+    )
 
     print(f"Cards found: {len(cards)}")
     if cards:

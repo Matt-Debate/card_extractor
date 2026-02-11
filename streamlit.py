@@ -27,6 +27,9 @@ with st.sidebar:
         list(heading_options.keys()),
         index=3,
     )
+    st.subheader("Text Extraction")
+    include_underlined = st.checkbox("Include underlined text", value=True)
+    include_highlighted = st.checkbox("Include highlighted text", value=False)
 
 
 title_level = heading_options[title_heading]
@@ -34,6 +37,8 @@ tag_level = heading_options[tag_heading]
 
 if title_level == tag_level:
     st.warning("Title Heading and Tag Heading are the same. This may reduce accuracy.")
+if not include_underlined and not include_highlighted:
+    st.warning("Both text extraction options are disabled. No marked text will be captured.")
 
 uploaded_files = st.file_uploader("Upload one or more .docx files", type=["docx"], accept_multiple_files=True)
 
@@ -51,7 +56,13 @@ else:
             errors.append(f"{uploaded.name}: {e}")
             continue
 
-        extracted = extract_cards(doc, title_level, tag_level)
+        extracted = extract_cards(
+            doc,
+            title_level,
+            tag_level,
+            include_underlined=include_underlined,
+            include_highlighted=include_highlighted,
+        )
         for c in extracted:
             cards.append(c)
             cards_with_source.append((uploaded.name, c))
