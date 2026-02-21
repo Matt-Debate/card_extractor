@@ -14,7 +14,10 @@ def extract_cards(doc, title_level, tag_level, include_underlined=True, include_
     current_title = ""
     current_tag = ""
     current_citation = ""
+    current_marked_runs = []
     current_underlined_runs = []
+    current_highlighted_runs = []
+    current_full_quote_lines = []
 
     in_card = False
     collect_quote_marked = False
@@ -26,8 +29,17 @@ def extract_cards(doc, title_level, tag_level, include_underlined=True, include_
                     "title": current_title.strip(),
                     "tag": current_tag.strip(),
                     "citation": current_citation.strip(),
+                    "marked_text": " ".join(
+                        t.strip() for t in current_marked_runs if t.strip()
+                    ),
                     "underlined_text": " ".join(
                         t.strip() for t in current_underlined_runs if t.strip()
+                    ),
+                    "highlighted_text": " ".join(
+                        t.strip() for t in current_highlighted_runs if t.strip()
+                    ),
+                    "full_quote": "\n".join(
+                        t.strip() for t in current_full_quote_lines if t.strip()
                     ),
                 }
             )
@@ -52,7 +64,10 @@ def extract_cards(doc, title_level, tag_level, include_underlined=True, include_
 
                 current_tag = text
                 current_citation = ""
+                current_marked_runs = []
                 current_underlined_runs = []
+                current_highlighted_runs = []
+                current_full_quote_lines = []
                 in_card = True
                 collect_quote_marked = False
 
@@ -90,7 +105,14 @@ def extract_cards(doc, title_level, tag_level, include_underlined=True, include_
                         is_highlighted = bool(highlight) and highlight != WD_COLOR_INDEX.AUTO
 
                     if is_underlined or is_highlighted:
+                        current_marked_runs.append(run.text)
+                    if is_underlined:
                         current_underlined_runs.append(run.text)
+                    if is_highlighted:
+                        current_highlighted_runs.append(run.text)
+
+                if para.text and para.text.strip():
+                    current_full_quote_lines.append(para.text)
 
             i += 1
 
@@ -112,8 +134,8 @@ def format_txt(cards):
             lines.append(c["tag"].strip())
         if c["citation"].strip():
             lines.append(c["citation"].strip())
-        if c["underlined_text"].strip():
-            lines.append(c["underlined_text"].strip())
+        if c["marked_text"].strip():
+            lines.append(c["marked_text"].strip())
         lines.append("")
         lines.append("=" * 60)
         lines.append("")
@@ -131,8 +153,35 @@ def format_csv(cards):
             parts.append(c["tag"].strip())
         if c["citation"].strip():
             parts.append(c["citation"].strip())
-        if c["underlined_text"].strip():
-            parts.append(c["underlined_text"].strip())
+        if c["marked_text"].strip():
+            parts.append(c["marked_text"].strip())
         col2 = "\n".join(parts)
         writer.writerow([col1, col2])
+    return output.getvalue()
+
+
+def format_csv_detailed(cards):
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "title",
+            "tag",
+            "citation",
+            "highlighted",
+            "underlined",
+            "full_quote",
+        ]
+    )
+    for c in cards:
+        writer.writerow(
+            [
+                c["title"].strip(),
+                c["tag"].strip(),
+                c["citation"].strip(),
+                c["highlighted_text"].strip(),
+                c["underlined_text"].strip(),
+                c["full_quote"].strip(),
+            ]
+        )
     return output.getvalue()

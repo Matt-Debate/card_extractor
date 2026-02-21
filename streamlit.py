@@ -2,7 +2,7 @@ import io
 import streamlit as st
 from docx import Document
 
-from extractor import extract_cards, format_txt, format_csv
+from extractor import extract_cards, format_txt, format_csv, format_csv_detailed
 
 st.set_page_config(page_title="Card Extractor", layout="wide")
 
@@ -80,8 +80,9 @@ else:
     else:
         txt_data = format_txt(cards)
         csv_data = format_csv(cards)
+        detailed_csv_data = format_csv_detailed(cards)
 
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
             st.download_button(
                 "Download TXT",
@@ -94,6 +95,13 @@ else:
                 "Download CSV",
                 data=csv_data,
                 file_name="cards_extracted.csv",
+                mime="text/csv",
+            )
+        with col3:
+            st.download_button(
+                "Download Detailed CSV",
+                data=detailed_csv_data,
+                file_name="cards_extracted_detailed.csv",
                 mime="text/csv",
             )
 
@@ -109,6 +117,6 @@ else:
                     preview_lines.append(c["tag"].strip())
                 if c["citation"].strip():
                     preview_lines.append(c["citation"].strip())
-                if c["underlined_text"].strip():
-                    preview_lines.append(c["underlined_text"].strip())
+                if c["marked_text"].strip():
+                    preview_lines.append(c["marked_text"].strip())
                 st.text("\n".join(preview_lines))
