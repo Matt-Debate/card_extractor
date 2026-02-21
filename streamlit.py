@@ -1,4 +1,5 @@
 import io
+import zipfile
 import streamlit as st
 from docx import Document
 
@@ -33,7 +34,7 @@ with st.sidebar:
     tag_heading = st.selectbox(
         "Tag Heading",
         list(heading_options.keys()),
-        index=3,
+        index=4,
     )
     st.subheader("Text Extraction")
     include_underlined = st.checkbox("Include underlined text", value=False)
@@ -50,20 +51,47 @@ if tag_level in title_levels:
 if not include_underlined and not include_highlighted:
     st.warning("Both text extraction options are disabled. No marked text will be captured.")
 
-uploaded_files = st.file_uploader("Upload one or more .docx files", type=["docx"], accept_multiple_files=True)
+uploaded_files = st.file_uploader(
+    "Upload .docx files or a .zip containing .docx files",
+    type=["docx", "zip"],
+    accept_multiple_files=True,
+)
 
 if not uploaded_files:
     st.info("Upload a .docx file to begin.")
 else:
+    docs_to_process = []
+
+    for uploaded in uploaded_files:
+        name = uploaded.name
+        if name.lower().endswith(".zip"):
+            try:
+                with zipfile.ZipFile(io.BytesIO(uploaded.getvalue())) as zf:
+                    for info in zf.infolist():
+                        if info.is_dir():
+                            continue
+                        if not info.filename.lower().endswith(".docx"):
+                            continue
+                        data = zf.read(info)
+                        docs_to_process.append((f"{name}:{info.filename}", data))
+            except zipfile.BadZipFile as e:
+                st.error(f"Invalid ZIP file: {name} ({e})")
+        else:
+            docs_to_process.append((name, uploaded.getvalue()))
+
+    if not docs_to_process:
+        st.info("No .docx files found. Upload .docx files or a .zip containing .docx files.")
+        st.stop()
+
     cards = []
     cards_with_source = []
     errors = []
 
-    for uploaded in uploaded_files:
+    for source_name, data in docs_to_process:
         try:
-            doc = Document(io.BytesIO(uploaded.getvalue()))
+            doc = Document(io.BytesIO(data))
         except Exception as e:
-            errors.append(f"{uploaded.name}: {e}")
+            errors.append(f"{source_name}: {e}")
             continue
 
         extracted = extract_cards(
@@ -75,7 +103,7 @@ else:
         )
         for c in extracted:
             cards.append(c)
-            cards_with_source.append((uploaded.name, c))
+            cards_with_source.append((source_name, c))
 
     st.write(f"Files processed: {len(uploaded_files)}")
     st.write(f"Cards found: {len(cards)}")
