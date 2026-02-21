@@ -5,7 +5,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from docx import Document
-from extractor import extract_cards, format_txt, format_csv, format_csv_detailed
+from extractor import (
+    extract_cards,
+    format_txt,
+    format_csv,
+    format_csv_detailed,
+    format_xlsx,
+    format_xlsx_detailed,
+)
 
 SAMPLE_PATH = ROOT / "samples" / "sample.docx"
 
@@ -34,6 +41,8 @@ def main():
     txt = format_txt(cards)
     csv_data = format_csv(cards)
     detailed_csv_data = format_csv_detailed(cards)
+    xlsx_data = format_xlsx(cards)
+    detailed_xlsx_data = format_xlsx_detailed(cards)
 
     print("\nTXT preview:\n")
     print("\n".join(txt.splitlines()[:10]))
@@ -43,6 +52,8 @@ def main():
 
     print("\nDetailed CSV preview:\n")
     print("\n".join(detailed_csv_data.splitlines()[:5]))
+    print("\nXLSX bytes:", len(xlsx_data))
+    print("Detailed XLSX bytes:", len(detailed_xlsx_data))
 
 
 if __name__ == "__main__":

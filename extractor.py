@@ -1,6 +1,8 @@
 import io
 import csv
 from docx.enum.text import WD_COLOR_INDEX
+from openpyxl import Workbook
+from openpyxl.styles import Alignment
 
 
 def is_heading(para, level):
@@ -185,3 +187,69 @@ def format_csv_detailed(cards):
             ]
         )
     return output.getvalue()
+
+
+def _workbook_to_bytes(wb):
+    output = io.BytesIO()
+    wb.save(output)
+    return output.getvalue()
+
+
+def format_xlsx(cards):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "cards"
+
+    ws.append(["title", "card"])
+    for c in cards:
+        parts = []
+        if c["tag"].strip():
+            parts.append(c["tag"].strip())
+        if c["citation"].strip():
+            parts.append(c["citation"].strip())
+        if c["marked_text"].strip():
+            parts.append(c["marked_text"].strip())
+        card_text = "\n".join(parts)
+        ws.append([c["title"].strip(), card_text])
+
+    wrap = Alignment(wrap_text=True, vertical="top")
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=2):
+        for cell in row:
+            cell.alignment = wrap
+
+    return _workbook_to_bytes(wb)
+
+
+def format_xlsx_detailed(cards):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "cards_detailed"
+
+    ws.append(
+        [
+            "title",
+            "tag",
+            "citation",
+            "highlighted",
+            "underlined",
+            "full_quote",
+        ]
+    )
+    for c in cards:
+        ws.append(
+            [
+                c["title"].strip(),
+                c["tag"].strip(),
+                c["citation"].strip(),
+                c["highlighted_text"].strip(),
+                c["underlined_text"].strip(),
+                c["full_quote"].strip(),
+            ]
+        )
+
+    wrap = Alignment(wrap_text=True, vertical="top")
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=6):
+        for cell in row:
+            cell.alignment = wrap
+
+    return _workbook_to_bytes(wb)

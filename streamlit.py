@@ -2,7 +2,14 @@ import io
 import streamlit as st
 from docx import Document
 
-from extractor import extract_cards, format_txt, format_csv, format_csv_detailed
+from extractor import (
+    extract_cards,
+    format_txt,
+    format_csv,
+    format_csv_detailed,
+    format_xlsx,
+    format_xlsx_detailed,
+)
 
 st.set_page_config(page_title="Card Extractor", layout="wide")
 
@@ -81,6 +88,8 @@ else:
         txt_data = format_txt(cards)
         csv_data = format_csv(cards)
         detailed_csv_data = format_csv_detailed(cards)
+        xlsx_data = format_xlsx(cards)
+        detailed_xlsx_data = format_xlsx_detailed(cards)
 
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -92,18 +101,35 @@ else:
             )
         with col2:
             st.download_button(
-                "Download CSV",
-                data=csv_data,
-                file_name="cards_extracted.csv",
-                mime="text/csv",
+                "Download XLSX",
+                data=xlsx_data,
+                file_name="cards_extracted.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
         with col3:
             st.download_button(
-                "Download Detailed CSV",
-                data=detailed_csv_data,
-                file_name="cards_extracted_detailed.csv",
-                mime="text/csv",
+                "Download Detailed XLSX",
+                data=detailed_xlsx_data,
+                file_name="cards_extracted_detailed.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
+        with st.expander("CSV (optional)"):
+            st.write("CSV can lose formatting in Excel; XLSX is recommended.")
+            csv_col1, csv_col2 = st.columns(2)
+            with csv_col1:
+                st.download_button(
+                    "Download CSV",
+                    data=csv_data,
+                    file_name="cards_extracted.csv",
+                    mime="text/csv",
+                )
+            with csv_col2:
+                st.download_button(
+                    "Download Detailed CSV",
+                    data=detailed_csv_data,
+                    file_name="cards_extracted_detailed.csv",
+                    mime="text/csv",
+                )
 
         with st.expander("Preview (first 3 cards)"):
             for idx, (source_name, c) in enumerate(cards_with_source[:3], start=1):

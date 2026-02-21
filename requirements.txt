@@ -2,4 +2,5 @@
 python-docx
 requests
 streamlit
+openpyxl
 # Add more packages as needed, one per line.
