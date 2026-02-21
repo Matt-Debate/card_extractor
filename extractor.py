@@ -100,13 +100,13 @@ def extract_cards(doc, title_level, tag_level, include_underlined=True, include_
                     if not run.text or not run.text.strip():
                         continue
 
-                    is_underlined = bool(run.font.underline) if include_underlined else False
-                    is_highlighted = False
-                    if include_highlighted:
-                        highlight = run.font.highlight_color
-                        is_highlighted = bool(highlight) and highlight != WD_COLOR_INDEX.AUTO
+                    is_underlined = bool(run.font.underline)
+                    highlight = run.font.highlight_color
+                    is_highlighted = bool(highlight) and highlight != WD_COLOR_INDEX.AUTO
 
-                    if is_underlined or is_highlighted:
+                    if (include_underlined and is_underlined) or (
+                        include_highlighted and is_highlighted
+                    ):
                         current_marked_runs.append(run.text)
                     if is_underlined:
                         current_underlined_runs.append(run.text)
