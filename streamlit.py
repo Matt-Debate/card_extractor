@@ -19,6 +19,7 @@ st.write("Upload a .docx file to extract debate cards. Configure which headings 
 with st.sidebar:
     st.subheader("Header Settings")
     heading_options = {
+        "Heading 1 or 2": [1, 2],
         "Heading 1": 1,
         "Heading 2": 2,
         "Heading 3": 3,
@@ -42,7 +43,9 @@ with st.sidebar:
 title_level = heading_options[title_heading]
 tag_level = heading_options[tag_heading]
 
-if title_level == tag_level:
+title_levels = title_level if isinstance(title_level, (list, tuple, set)) else [title_level]
+
+if tag_level in title_levels:
     st.warning("Title Heading and Tag Heading are the same. This may reduce accuracy.")
 if not include_underlined and not include_highlighted:
     st.warning("Both text extraction options are disabled. No marked text will be captured.")
@@ -65,7 +68,7 @@ else:
 
         extracted = extract_cards(
             doc,
-            title_level,
+            title_levels,
             tag_level,
             include_underlined=include_underlined,
             include_highlighted=include_highlighted,

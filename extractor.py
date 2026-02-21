@@ -5,9 +5,16 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment
 
 
-def is_heading(para, level):
+def is_heading(para, level_or_levels):
     name = (para.style.name or "").lower()
-    return f"heading {level}" in name or name == f"heading{level}"
+    if isinstance(level_or_levels, (list, tuple, set)):
+        levels = level_or_levels
+    else:
+        levels = [level_or_levels]
+    for level in levels:
+        if f"heading {level}" in name or name == f"heading{level}":
+            return True
+    return False
 
 def paragraph_has_marked_run(para):
     for run in para.runs:
@@ -36,6 +43,10 @@ def is_citation_like(text):
 
 
 def extract_cards(doc, title_level, tag_level, include_underlined=True, include_highlighted=False):
+    if isinstance(title_level, (list, tuple, set)):
+        title_levels = list(title_level)
+    else:
+        title_levels = [title_level]
     cards = []
 
     current_title = ""
@@ -80,7 +91,7 @@ def extract_cards(doc, title_level, tag_level, include_underlined=True, include_
         text = para.text.strip()
 
         try:
-            if is_heading(para, title_level):
+            if is_heading(para, title_levels):
                 current_title = text
                 i += 1
                 continue
@@ -105,7 +116,7 @@ def extract_cards(doc, title_level, tag_level, include_underlined=True, include_
                     if not nxt_text:
                         j += 1
                         continue
-                    if is_heading(nxt, title_level) or is_heading(nxt, tag_level):
+                    if is_heading(nxt, title_levels) or is_heading(nxt, tag_level):
                         break
                     citation_lines = [nxt_text]
 
@@ -115,7 +126,7 @@ def extract_cards(doc, title_level, tag_level, include_underlined=True, include_
                         nxt2_text = nxt2.text.strip()
                         if not nxt2_text:
                             break
-                        if is_heading(nxt2, title_level) or is_heading(nxt2, tag_level):
+                        if is_heading(nxt2, title_levels) or is_heading(nxt2, tag_level):
                             break
                         if paragraph_has_marked_run(nxt2):
                             break
@@ -134,7 +145,7 @@ def extract_cards(doc, title_level, tag_level, include_underlined=True, include_
                 continue
 
             if in_card and collect_quote_marked:
-                if is_heading(para, title_level) or is_heading(para, tag_level):
+                if is_heading(para, title_levels) or is_heading(para, tag_level):
                     collect_quote_marked = False
                     i += 1
                     continue
