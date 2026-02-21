@@ -9,6 +9,31 @@ def is_heading(para, level):
     name = (para.style.name or "").lower()
     return f"heading {level}" in name or name == f"heading{level}"
 
+def paragraph_has_marked_run(para):
+    for run in para.runs:
+        if not run.text or not run.text.strip():
+            continue
+        if run.font.underline:
+            return True
+        highlight = run.font.highlight_color
+        if highlight and highlight != WD_COLOR_INDEX.AUTO:
+            return True
+    return False
+
+
+def is_citation_like(text):
+    t = text.strip()
+    if not t:
+        return False
+    lower = t.lower()
+    if t.startswith("[") or t.endswith("]"):
+        return True
+    if "http://" in lower or "https://" in lower or "www." in lower:
+        return True
+    if "accessed" in lower or "doa" in lower:
+        return True
+    return False
+
 
 def extract_cards(doc, title_level, tag_level, include_underlined=True, include_highlighted=False):
     cards = []
@@ -82,9 +107,27 @@ def extract_cards(doc, title_level, tag_level, include_underlined=True, include_
                         continue
                     if is_heading(nxt, title_level) or is_heading(nxt, tag_level):
                         break
-                    current_citation = nxt_text
+                    citation_lines = [nxt_text]
+
+                    k = j + 1
+                    while k < n:
+                        nxt2 = paragraphs[k]
+                        nxt2_text = nxt2.text.strip()
+                        if not nxt2_text:
+                            break
+                        if is_heading(nxt2, title_level) or is_heading(nxt2, tag_level):
+                            break
+                        if paragraph_has_marked_run(nxt2):
+                            break
+                        if is_citation_like(nxt2_text):
+                            citation_lines.append(nxt2_text)
+                            k += 1
+                            continue
+                        break
+
+                    current_citation = "\n".join(citation_lines)
                     collect_quote_marked = True
-                    i = j
+                    i = k - 1
                     break
 
                 i += 1
