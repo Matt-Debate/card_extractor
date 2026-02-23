@@ -172,21 +172,27 @@ def parse_citation_metadata(citation_text):
 
     oral = ""
     if first_line:
-        if " - " in first_line:
-            oral = first_line.split(" - ", 1)[0].strip()
-        else:
-            for dash in (" — ", " – ", "—", "–"):
-                if dash in first_line:
-                    oral = first_line.split(dash, 1)[0].strip()
-                    break
-        if not oral and first_line.startswith("["):
+        if first_line.startswith("["):
             inner = first_line.lstrip("[").split("]", 1)[0]
             oral = inner.split(",", 1)[0].strip()
+        if not oral:
+            dash_positions = []
+            for dash in (" - ", " — ", " – ", "—", "–"):
+                pos = first_line.find(dash)
+                if pos != -1:
+                    dash_positions.append(pos)
+            dash_pos = min(dash_positions) if dash_positions else -1
+            paren_pos = first_line.find("(")
+
+            if paren_pos != -1 and (dash_pos == -1 or paren_pos < dash_pos):
+                oral = first_line[:paren_pos].strip()
+            elif dash_pos != -1:
+                oral = first_line[:dash_pos].strip()
         if not oral:
             oral = first_line
 
     url = ""
-    url_matches = re.findall(r"https?://\\S+", text)
+    url_matches = re.findall(r"https?://[^\s)\]]+", text)
     if url_matches:
         url = url_matches[0].rstrip(").,;\"'")
 
