@@ -7,9 +7,9 @@ from extractor import (
     extract_cards,
     format_txt,
     format_csv,
-    format_csv_detailed,
+    format_csv_detailed_with_source,
     format_xlsx,
-    format_xlsx_detailed,
+    format_xlsx_detailed_with_source,
 )
 
 st.set_page_config(page_title="Card Extractor", layout="wide")
@@ -19,34 +19,38 @@ st.write("Upload a .docx file to extract debate cards. Configure which headings 
 
 with st.sidebar:
     st.subheader("Header Settings")
-    heading_options = {
+    title_heading_options = {
         "Heading 1 or 2": [1, 2],
         "Heading 1": 1,
         "Heading 2": 2,
+    }
+    tag_heading_options = {
+        "Heading 3 or 4": [3, 4],
         "Heading 3": 3,
         "Heading 4": 4,
     }
     title_heading = st.selectbox(
         "Title Heading",
-        list(heading_options.keys()),
+        list(title_heading_options.keys()),
         index=0,
     )
     tag_heading = st.selectbox(
         "Tag Heading",
-        list(heading_options.keys()),
-        index=4,
+        list(tag_heading_options.keys()),
+        index=2,
     )
     st.subheader("Text Extraction")
     include_underlined = st.checkbox("Include underlined text", value=False)
     include_highlighted = st.checkbox("Include highlighted text", value=True)
 
 
-title_level = heading_options[title_heading]
-tag_level = heading_options[tag_heading]
+title_level = title_heading_options[title_heading]
+tag_level = tag_heading_options[tag_heading]
 
 title_levels = title_level if isinstance(title_level, (list, tuple, set)) else [title_level]
+tag_levels = tag_level if isinstance(tag_level, (list, tuple, set)) else [tag_level]
 
-if tag_level in title_levels:
+if set(title_levels) & set(tag_levels):
     st.warning("Title Heading and Tag Heading are the same. This may reduce accuracy.")
 if not include_underlined and not include_highlighted:
     st.warning("Both text extraction options are disabled. No marked text will be captured.")
@@ -70,10 +74,17 @@ else:
                     for info in zf.infolist():
                         if info.is_dir():
                             continue
-                        if not info.filename.lower().endswith(".docx"):
+                        filename = info.filename
+                        lower_name = filename.lower()
+                        if lower_name.startswith("__macosx/") or "/__macosx/" in lower_name:
+                            continue
+                        base_name = lower_name.rsplit("/", 1)[-1]
+                        if base_name.startswith("._"):
+                            continue
+                        if not lower_name.endswith(".docx"):
                             continue
                         data = zf.read(info)
-                        docs_to_process.append((f"{name}:{info.filename}", data))
+                        docs_to_process.append((f"{name}:{filename}", data))
             except zipfile.BadZipFile as e:
                 st.error(f"Invalid ZIP file: {name} ({e})")
         else:
@@ -118,9 +129,9 @@ else:
     else:
         txt_data = format_txt(cards)
         csv_data = format_csv(cards)
-        detailed_csv_data = format_csv_detailed(cards)
+        detailed_csv_data = format_csv_detailed_with_source(cards_with_source)
         xlsx_data = format_xlsx(cards)
-        detailed_xlsx_data = format_xlsx_detailed(cards)
+        detailed_xlsx_data = format_xlsx_detailed_with_source(cards_with_source)
 
         col1, col2, col3 = st.columns(3)
         with col1:

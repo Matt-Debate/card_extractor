@@ -9,9 +9,9 @@ from extractor import (
     extract_cards,
     format_txt,
     format_csv,
-    format_csv_detailed,
+    format_csv_detailed_with_source,
     format_xlsx,
-    format_xlsx_detailed,
+    format_xlsx_detailed_with_source,
 )
 
 SAMPLE_PATH = ROOT / "samples" / "sample.docx"
@@ -40,9 +40,10 @@ def main():
 
     txt = format_txt(cards)
     csv_data = format_csv(cards)
-    detailed_csv_data = format_csv_detailed(cards)
+    cards_with_source = [("sample.docx", c) for c in cards]
+    detailed_csv_data = format_csv_detailed_with_source(cards_with_source)
     xlsx_data = format_xlsx(cards)
-    detailed_xlsx_data = format_xlsx_detailed(cards)
+    detailed_xlsx_data = format_xlsx_detailed_with_source(cards_with_source)
 
     print("\nTXT preview:\n")
     print("\n".join(txt.splitlines()[:10]))
