@@ -165,6 +165,34 @@ def is_citation_like(text):
     return False
 
 
+def parse_citation_metadata(citation_text):
+    text = citation_text or ""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    first_line = lines[0] if lines else ""
+
+    oral = ""
+    if first_line:
+        if " - " in first_line:
+            oral = first_line.split(" - ", 1)[0].strip()
+        else:
+            for dash in (" — ", " – ", "—", "–"):
+                if dash in first_line:
+                    oral = first_line.split(dash, 1)[0].strip()
+                    break
+        if not oral and first_line.startswith("["):
+            inner = first_line.lstrip("[").split("]", 1)[0]
+            oral = inner.split(",", 1)[0].strip()
+        if not oral:
+            oral = first_line
+
+    url = ""
+    url_matches = re.findall(r"https?://\\S+", text)
+    if url_matches:
+        url = url_matches[0].rstrip(").,;\"'")
+
+    return oral, url
+
+
 def extract_cards(doc, title_level, tag_level, include_underlined=True, include_highlighted=False):
     if isinstance(title_level, (list, tuple, set)):
         title_levels = list(title_level)
@@ -358,6 +386,8 @@ def format_csv_detailed_with_source(cards_with_source):
             "title",
             "tag",
             "citation",
+            "oral_citation",
+            "url",
             "highlighted",
             "underlined",
             "full_quote",
@@ -365,6 +395,7 @@ def format_csv_detailed_with_source(cards_with_source):
     )
     for source_name, c in cards_with_source:
         meta = parse_filename_metadata(source_name)
+        oral, url = parse_citation_metadata(c["citation"])
         writer.writerow(
             [
                 meta["filename"] or "",
@@ -377,6 +408,8 @@ def format_csv_detailed_with_source(cards_with_source):
                 c["title"].strip(),
                 c["tag"].strip(),
                 c["citation"].strip(),
+                oral,
+                url,
                 c["highlighted_text"].strip(),
                 c["underlined_text"].strip(),
                 c["full_quote"].strip(),
@@ -433,6 +466,8 @@ def format_xlsx_detailed_with_source(cards_with_source):
             "title",
             "tag",
             "citation",
+            "oral_citation",
+            "url",
             "highlighted",
             "underlined",
             "full_quote",
@@ -440,6 +475,7 @@ def format_xlsx_detailed_with_source(cards_with_source):
     )
     for source_name, c in cards_with_source:
         meta = parse_filename_metadata(source_name)
+        oral, url = parse_citation_metadata(c["citation"])
         ws.append(
             [
                 meta["filename"] or "",
@@ -452,6 +488,8 @@ def format_xlsx_detailed_with_source(cards_with_source):
                 c["title"].strip(),
                 c["tag"].strip(),
                 c["citation"].strip(),
+                oral,
+                url,
                 c["highlighted_text"].strip(),
                 c["underlined_text"].strip(),
                 c["full_quote"].strip(),
@@ -459,7 +497,7 @@ def format_xlsx_detailed_with_source(cards_with_source):
         )
 
     wrap = Alignment(wrap_text=True, vertical="top")
-    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=13):
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=15):
         for cell in row:
             cell.alignment = wrap
 
