@@ -20,6 +20,7 @@ st.write("Upload a .docx file to extract debate cards. Configure which headings 
 with st.sidebar:
     st.subheader("Header Settings")
     title_heading_options = {
+        "Auto (Heading 1-3)": [1, 2, 3],
         "Heading 1 or 2": [1, 2],
         "Heading 1": 1,
         "Heading 2": 2,
