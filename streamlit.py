@@ -99,11 +99,17 @@ else:
     cards_with_source = []
     errors = []
 
-    for source_name, data in docs_to_process:
+    total_docs = len(docs_to_process)
+    progress = st.progress(0)
+    status = st.empty()
+
+    for idx, (source_name, data) in enumerate(docs_to_process, start=1):
+        status.text(f"Processing {idx}/{total_docs}: {source_name}")
         try:
             doc = Document(io.BytesIO(data))
         except Exception as e:
             errors.append(f"{source_name}: {e}")
+            progress.progress(int(idx / total_docs * 100))
             continue
 
         extracted = extract_cards(
@@ -116,6 +122,9 @@ else:
         for c in extracted:
             cards.append(c)
             cards_with_source.append((source_name, c))
+        progress.progress(int(idx / total_docs * 100))
+
+    status.text(f"Processed {total_docs} file(s).")
 
     st.write(f"Files processed: {len(uploaded_files)}")
     st.write(f"Cards found: {len(cards)}")
