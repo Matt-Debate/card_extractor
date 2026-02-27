@@ -21,3 +21,9 @@ env/
 # Large/intermediate outputs if you want to exclude
 # *.docx
 # *.png
+
+# Extractor outputs / local snapshots
+cards_extracted*.txt
+cards_extracted*.csv
+cards_extracted*.xlsx
+*.snapshot.json
