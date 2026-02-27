@@ -205,7 +205,14 @@ def parse_citation_metadata(citation_text):
     return oral, url
 
 
-def extract_cards(doc, title_level, tag_level, include_underlined=True, include_highlighted=False):
+def extract_cards(
+    doc,
+    title_level,
+    tag_level,
+    include_underlined=True,
+    include_highlighted=False,
+    parse_errors=None,
+):
     if isinstance(title_level, (list, tuple, set)):
         title_levels = list(title_level)
     else:
@@ -335,7 +342,12 @@ def extract_cards(doc, title_level, tag_level, include_underlined=True, include_
 
             i += 1
 
-        except Exception:
+        except Exception as e:
+            if parse_errors is not None:
+                snippet = (text or "")[:120]
+                parse_errors.append(
+                    f"Paragraph {i}: {e.__class__.__name__}: {e} | text={snippet!r}"
+                )
             i += 1
 
     if in_card:

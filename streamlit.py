@@ -65,74 +65,143 @@ uploaded_files = st.file_uploader(
 if not uploaded_files:
     st.info("Upload a .docx file to begin.")
 else:
-    docs_to_process = []
+    zip_payloads = {}
+    total_docs = 0
+    intake_errors = []
 
-    for uploaded in uploaded_files:
+    for upload_idx, uploaded in enumerate(uploaded_files):
         name = uploaded.name
-        if name.lower().endswith(".zip"):
+        lower_name = name.lower()
+        if lower_name.endswith(".docx"):
+            total_docs += 1
+            continue
+
+        if lower_name.endswith(".zip"):
             try:
-                with zipfile.ZipFile(io.BytesIO(uploaded.getvalue())) as zf:
+                zip_bytes = uploaded.getvalue()
+                member_names = []
+                with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
                     for info in zf.infolist():
                         if info.is_dir():
                             continue
                         filename = info.filename
-                        lower_name = filename.lower()
-                        if lower_name.startswith("__macosx/") or "/__macosx/" in lower_name:
+                        member_lower = filename.lower()
+                        if member_lower.startswith("__macosx/") or "/__macosx/" in member_lower:
                             continue
-                        base_name = lower_name.rsplit("/", 1)[-1]
+                        base_name = member_lower.rsplit("/", 1)[-1]
                         if base_name.startswith("._"):
                             continue
-                        if not lower_name.endswith(".docx"):
+                        if not member_lower.endswith(".docx"):
                             continue
-                        data = zf.read(info)
-                        docs_to_process.append((f"{name}:{filename}", data))
+                        member_names.append(filename)
+                if member_names:
+                    zip_payloads[upload_idx] = (zip_bytes, member_names)
+                    total_docs += len(member_names)
             except zipfile.BadZipFile as e:
-                st.error(f"Invalid ZIP file: {name} ({e})")
-        else:
-            docs_to_process.append((name, uploaded.getvalue()))
+                intake_errors.append(f"Invalid ZIP file: {name} ({e})")
+            continue
 
-    if not docs_to_process:
+        intake_errors.append(f"Unsupported file type: {name}")
+
+    if not total_docs:
         st.info("No .docx files found. Upload .docx files or a .zip containing .docx files.")
         st.stop()
 
     cards = []
     cards_with_source = []
     errors = []
-
-    total_docs = len(docs_to_process)
+    parse_warnings = []
     progress = st.progress(0)
     status = st.empty()
+    processed_docs = [0]
 
-    for idx, (source_name, data) in enumerate(docs_to_process, start=1):
-        status.text(f"Processing {idx}/{total_docs}: {source_name}")
+    def process_document(source_name, data):
+        status.text(f"Processing {processed_docs[0] + 1}/{total_docs}: {source_name}")
         try:
             doc = Document(io.BytesIO(data))
         except Exception as e:
             errors.append(f"{source_name}: {e}")
-            progress.progress(int(idx / total_docs * 100))
-            continue
+            processed_docs[0] += 1
+            progress.progress(int(processed_docs[0] / total_docs * 100))
+            return
 
+        doc_parse_errors = []
         extracted = extract_cards(
             doc,
             title_levels,
             tag_level,
             include_underlined=include_underlined,
             include_highlighted=include_highlighted,
+            parse_errors=doc_parse_errors,
         )
         for c in extracted:
             cards.append(c)
             cards_with_source.append((source_name, c))
-        progress.progress(int(idx / total_docs * 100))
 
-    status.text(f"Processed {total_docs} file(s).")
+        if doc_parse_errors:
+            parse_warnings.append((source_name, doc_parse_errors))
 
-    st.write(f"Files processed: {len(uploaded_files)}")
+        processed_docs[0] += 1
+        progress.progress(int(processed_docs[0] / total_docs * 100))
+
+    for upload_idx, uploaded in enumerate(uploaded_files):
+        name = uploaded.name
+        lower_name = name.lower()
+        if lower_name.endswith(".docx"):
+            process_document(name, uploaded.getvalue())
+            continue
+
+        if lower_name.endswith(".zip"):
+            payload = zip_payloads.get(upload_idx)
+            if payload is None:
+                continue
+            zip_bytes, member_names = payload
+            try:
+                with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+                    for member_name in member_names:
+                        source_name = f"{name}:{member_name}"
+                        try:
+                            member_data = zf.read(member_name)
+                        except Exception as e:
+                            errors.append(f"{source_name}: {e}")
+                            processed_docs[0] += 1
+                            progress.progress(int(processed_docs[0] / total_docs * 100))
+                            continue
+                        process_document(source_name, member_data)
+            except zipfile.BadZipFile as e:
+                errors.append(f"Invalid ZIP file during processing: {name} ({e})")
+
+    status.text(f"Processed {processed_docs[0]} document(s).")
+
+    st.write(f"Uploads received: {len(uploaded_files)}")
+    st.write(f"Documents processed: {processed_docs[0]}")
     st.write(f"Cards found: {len(cards)}")
+
+    if intake_errors:
+        st.warning("Some uploads could not be indexed:")
+        for err in intake_errors:
+            st.text(err)
 
     if errors:
         st.warning("Some files could not be read:")
         for err in errors:
             st.text(err)
+
+    if parse_warnings:
+        total_parse_warnings = sum(len(w) for _, w in parse_warnings)
+        st.warning(f"Parser warnings encountered: {total_parse_warnings}")
+        with st.expander("Parser warning details (sample)"):
+            shown = 0
+            max_shown = 100
+            for source_name, warnings_for_doc in parse_warnings:
+                for warning in warnings_for_doc:
+                    st.text(f"{source_name}: {warning}")
+                    shown += 1
+                    if shown >= max_shown:
+                        st.text(f"... truncated at {max_shown} warnings")
+                        break
+                if shown >= max_shown:
+                    break
 
     if not cards:
         st.info("No cards extracted. Check heading selections and document formatting.")
