@@ -15,44 +15,13 @@ from extractor import (
 st.set_page_config(page_title="Card Extractor", layout="wide")
 
 st.title("Card Extractor")
-st.write("Upload a .docx file to extract debate cards. Configure which headings mark titles and tags.")
+st.write("Upload .docx files and extract debate cards with automatic parsing.")
 
 with st.sidebar:
-    st.subheader("Header Settings")
-    title_heading_options = {
-        "Auto (Heading 1-3)": [1, 2, 3],
-        "Heading 1 or 2": [1, 2],
-        "Heading 1": 1,
-        "Heading 2": 2,
-    }
-    tag_heading_options = {
-        "Heading 3 or 4": [3, 4],
-        "Heading 3": 3,
-        "Heading 4": 4,
-    }
-    title_heading = st.selectbox(
-        "Title Heading",
-        list(title_heading_options.keys()),
-        index=0,
-    )
-    tag_heading = st.selectbox(
-        "Tag Heading",
-        list(tag_heading_options.keys()),
-        index=2,
-    )
     st.subheader("Text Extraction")
     include_underlined = st.checkbox("Include underlined text", value=False)
     include_highlighted = st.checkbox("Include highlighted text", value=True)
 
-
-title_level = title_heading_options[title_heading]
-tag_level = tag_heading_options[tag_heading]
-
-title_levels = title_level if isinstance(title_level, (list, tuple, set)) else [title_level]
-tag_levels = tag_level if isinstance(tag_level, (list, tuple, set)) else [tag_level]
-
-if set(title_levels) & set(tag_levels):
-    st.warning("Title Heading and Tag Heading are the same. This may reduce accuracy.")
 if not include_underlined and not include_highlighted:
     st.warning("Both text extraction options are disabled. No marked text will be captured.")
 
@@ -129,8 +98,6 @@ else:
         try:
             extracted = extract_cards(
                 doc,
-                title_levels,
-                tag_level,
                 include_underlined=include_underlined,
                 include_highlighted=include_highlighted,
                 parse_errors=doc_parse_errors,
@@ -141,8 +108,6 @@ else:
                 raise
             extracted = extract_cards(
                 doc,
-                title_levels,
-                tag_level,
                 include_underlined=include_underlined,
                 include_highlighted=include_highlighted,
             )
@@ -216,7 +181,7 @@ else:
                     break
 
     if not cards:
-        st.info("No cards extracted. Check heading selections and document formatting.")
+        st.info("No cards extracted. Check citation formatting and document structure.")
     else:
         txt_data = format_txt(cards)
         csv_data = format_csv(cards)
