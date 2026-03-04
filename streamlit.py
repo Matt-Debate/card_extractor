@@ -126,14 +126,26 @@ else:
             return
 
         doc_parse_errors = []
-        extracted = extract_cards(
-            doc,
-            title_levels,
-            tag_level,
-            include_underlined=include_underlined,
-            include_highlighted=include_highlighted,
-            parse_errors=doc_parse_errors,
-        )
+        try:
+            extracted = extract_cards(
+                doc,
+                title_levels,
+                tag_level,
+                include_underlined=include_underlined,
+                include_highlighted=include_highlighted,
+                parse_errors=doc_parse_errors,
+            )
+        except TypeError as e:
+            # Backward compatibility for environments with older extractor.py.
+            if "unexpected keyword argument 'parse_errors'" not in str(e):
+                raise
+            extracted = extract_cards(
+                doc,
+                title_levels,
+                tag_level,
+                include_underlined=include_underlined,
+                include_highlighted=include_highlighted,
+            )
         for c in extracted:
             cards.append(c)
             cards_with_source.append((source_name, c))
