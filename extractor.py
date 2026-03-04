@@ -553,6 +553,107 @@ def _derive_tag_from_title(title, citation):
     return raw
 
 
+def _normalize_compare_text(text):
+    normalized = _normalize_text(text).lower()
+    normalized = re.sub(r"[^a-z0-9]+", " ", normalized)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _is_title_tag_redundant(title, tag):
+    title_norm = _normalize_compare_text(title)
+    tag_norm = _normalize_compare_text(tag)
+    if not title_norm or not tag_norm:
+        return False
+    if title_norm == tag_norm:
+        return True
+
+    if title_norm in tag_norm or tag_norm in title_norm:
+        shorter_len = min(len(title_norm), len(tag_norm))
+        longer_len = max(len(title_norm), len(tag_norm))
+        if longer_len > 0 and (shorter_len / longer_len) >= 0.7:
+            return True
+
+    title_words = title_norm.split()
+    tag_words = tag_norm.split()
+    if not title_words or not tag_words:
+        return False
+    shorter_words = title_words if len(title_words) <= len(tag_words) else tag_words
+    longer_words = tag_words if len(title_words) <= len(tag_words) else title_words
+    prefix_match_count = 0
+    for short_word, long_word in zip(shorter_words, longer_words):
+        if short_word != long_word:
+            break
+        prefix_match_count += 1
+    if prefix_match_count >= 4 and (prefix_match_count / len(shorter_words)) >= 0.75:
+        return True
+
+    return False
+
+
+def _split_compound_title_tag(text):
+    normalized = _normalize_tag_title_text(text)
+    if not normalized:
+        return {"title": "", "tag": ""}
+
+    for separator in (": ", " - ", " — ", " – ", "|"):
+        if separator not in normalized:
+            continue
+        left, right = normalized.split(separator, 1)
+        left = _normalize_tag_title_text(left)
+        right = _normalize_tag_title_text(right)
+        left_words = _word_count(left)
+        right_words = _word_count(right)
+        if not left or not right:
+            continue
+        if not (2 <= left_words <= 10 and 2 <= right_words <= 18):
+            continue
+        if _citation_score(right) >= CITATION_MIN_SCORE:
+            continue
+        if (
+            _looks_like_tag_line(left)
+            or "contention" in left.lower()
+            or "framework" in left.lower()
+            or left_words <= 6
+        ):
+            return {"title": left, "tag": right}
+
+    return {"title": "", "tag": ""}
+
+
+def _resolve_title_tag_redundancy(title, tag, heading_title):
+    resolved_title = _normalize_tag_title_text(title)
+    resolved_tag = _normalize_tag_title_text(tag)
+    heading_title = _normalize_tag_title_text(heading_title)
+
+    if not resolved_tag:
+        if not resolved_title and heading_title:
+            return {"title": heading_title, "tag": ""}
+        return {"title": resolved_title, "tag": resolved_tag}
+
+    if _is_title_tag_redundant(resolved_title, resolved_tag):
+        split_from_title = _split_compound_title_tag(resolved_title)
+        if split_from_title["title"] and split_from_title["tag"]:
+            resolved_title = split_from_title["title"]
+            resolved_tag = split_from_title["tag"]
+        else:
+            split_from_tag = _split_compound_title_tag(resolved_tag)
+            if split_from_tag["title"] and split_from_tag["tag"]:
+                resolved_title = heading_title or split_from_tag["title"]
+                resolved_tag = split_from_tag["tag"]
+            elif heading_title and not _is_title_tag_redundant(heading_title, resolved_tag):
+                resolved_title = heading_title
+            else:
+                resolved_tag = ""
+
+    if _is_title_tag_redundant(resolved_title, resolved_tag):
+        resolved_tag = ""
+
+    if not resolved_title and heading_title:
+        resolved_title = heading_title
+
+    return {"title": resolved_title, "tag": resolved_tag}
+
+
 def _derive_from_citation_lead(citation):
     normalized = _normalize_tag_title_text(citation)
     if not normalized:
@@ -842,6 +943,9 @@ def extract_cards(
     if not citation_candidates:
         title = _reconstruct_title_from_body(scored)
         tag = _derive_tag_from_title(title, "") or title
+        resolved_title_tag = _resolve_title_tag_redundancy(title, tag, "")
+        title = resolved_title_tag["title"]
+        tag = resolved_title_tag["tag"]
         body_indexes = [item["index"] for item in scored]
         body_content = _collect_body_content(
             body_indexes,
@@ -908,10 +1012,10 @@ def extract_cards(
                 citation_paragraph["text"], prior_context_line=prior_context_line
             )
             citation_fallback = _derive_from_citation_lead(citation_text)
+            heading_title = _find_recent_heading_title(scored, citation_index)
 
             title = selected_parts.get("title", "") or citation_fallback.get("title", "")
             if not title or _looks_like_tag_line(title):
-                heading_title = _find_recent_heading_title(scored, citation_index)
                 if heading_title:
                     title = heading_title
             if not title:
@@ -922,6 +1026,9 @@ def extract_cards(
                 tag = _derive_tag_from_title(title, citation_text)
             if not tag:
                 tag = citation_fallback.get("tag", "") or title
+            resolved_title_tag = _resolve_title_tag_redundancy(title, tag, heading_title)
+            title = resolved_title_tag["title"]
+            tag = resolved_title_tag["tag"]
 
             body_indexes = [item["index"] for item in body_paragraphs]
             body_content = _collect_body_content(
